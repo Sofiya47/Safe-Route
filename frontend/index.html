@@ -1,314 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="SafeRoute – AI-powered women safety navigation system. Predict route safety using crime rate, street light availability, and population density.">
-    <title>SafeRoute – AI Powered Women Safety Navigation</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeRoute — Thiruvananthapuram</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
-    <!-- ===== NAVIGATION ===== -->
-    <nav class="navbar" id="navbar">
-        <div class="nav-container">
-            <a href="#home" class="nav-logo">
-                <svg class="nav-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
-                    <circle cx="12" cy="10" r="3" />
-                </svg>
-                SafeRoute
-            </a>
-            <ul class="nav-links" id="navLinks">
-                <li><a href="#home" class="nav-link active">Home</a></li>
-                <li><a href="#route" class="nav-link">Find Route</a></li>
-                <li><a href="#emergency" class="nav-link">Emergency Contact</a></li>
-            </ul>
-            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
-                <span></span>
-                <span></span>
-                <span></span>
+  <!-- Decorative orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="container">
+
+    <!-- HEADER -->
+    <header>
+      <div class="tag">
+        <span class="tag-dot"></span>
+        Thiruvananthapuram · Safety Analysis
+      </div>
+      <h1>Safe<span class="highlight">Route</span></h1>
+      <p class="subtitle">AI-powered route safety prediction for women navigating urban Thiruvananthapuram</p>
+    </header>
+
+    <div class="divider">
+      <span class="divider-label">// Route Query Interface</span>
+    </div>
+
+    <!-- CARD -->
+    <div class="card">
+      <div class="card-top-bar"></div>
+
+      <!-- STEP 1 -->
+      <div id="step-1" class="step active">
+        <div class="card-label">01 — Enter Route</div>
+
+        <div class="fields">
+          <div class="field">
+            <label for="start">
+              <span class="field-num">A</span> Origin
+            </label>
+            <input type="text" id="start" placeholder="e.g. Pattom" autocomplete="off" />
+          </div>
+          <div class="field-divider">
+            <div class="field-divider-line"></div>
+            <div class="field-divider-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+            <div class="field-divider-line"></div>
+          </div>
+          <div class="field">
+            <label for="destination">
+              <span class="field-num">B</span> Destination
+            </label>
+            <input type="text" id="destination" placeholder="e.g. Kazhakuttam" autocomplete="off" />
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeRoute()">
+          <span>Analyze Route Safety</span>
+          <span class="btn-arrow">→</span>
+        </button>
+
+        <div class="error-box" id="errorBox"></div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="step-2" class="step">
+
+        <div class="loader" id="loader">
+          <div class="loader-rings">
+            <div class="loader-ring r1"></div>
+            <div class="loader-ring r2"></div>
+            <div class="loader-ring r3"></div>
+          </div>
+          <div class="loader-text">Calculating safest path…</div>
+          <div class="loader-sub">Analysing crime density · lighting · police presence</div>
+        </div>
+
+        <div class="result" id="result">
+          <div class="result-header">
+            <span class="card-label">02 — Analysis Result</span>
+            <div class="result-line"></div>
+          </div>
+
+          <!-- Route strip -->
+          <div class="route-strip" id="routeStrip">
+            <div class="route-node">
+              <div class="route-node-label">From</div>
+              <div class="route-node-val" id="resFrom">—</div>
+            </div>
+            <div class="route-arrow-wrap">
+              <div class="route-arrow-line"></div>
+              <div class="route-arrow-head">→</div>
+            </div>
+            <div class="route-node">
+              <div class="route-node-label">To</div>
+              <div class="route-node-val" id="resTo">—</div>
+            </div>
+          </div>
+
+          <!-- MAP -->
+          <div id="map"></div>
+
+          <!-- Verdict -->
+          <div class="verdict" id="verdictBox">
+            <div class="verdict-stripe"></div>
+            <div class="verdict-body">
+              <div class="verdict-left">
+                <div class="verdict-title" id="verdictTitle">—</div>
+                <div class="verdict-meta" id="verdictMeta"></div>
+              </div>
+              <div class="verdict-score-wrap">
+                <div class="verdict-score-num" id="verdictScoreNum">—</div>
+                <div class="verdict-score-label">Safety Score</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Score bar -->
+          <div class="score-bar-wrap">
+            <div class="score-bar-track">
+              <div class="score-bar-fill" id="scoreBarFill" style="width:0%"></div>
+            </div>
+            <div class="score-bar-labels">
+              <span>Unsafe</span><span>Moderate</span><span>Safe</span>
+            </div>
+          </div>
+
+          <div class="result-actions">
+            <button class="btn btn-primary" onclick="goToStep(3)">
+              <span>Provide Feedback</span>
+              <span class="btn-arrow">→</span>
             </button>
+            <button class="btn btn-ghost" onclick="goToStep(1)">
+              ← New Route
+            </button>
+          </div>
         </div>
-    </nav>
+      </div>
 
-    <!-- ===== HOME / HERO SECTION ===== -->
-    <section class="hero" id="home">
-        <div class="hero-bg-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
+      <!-- STEP 3 -->
+      <div id="step-3" class="step">
+        <div class="card-label">03 — Community Feedback</div>
+
+        <p class="feedback-prompt">Was this route safe in your experience?</p>
+
+        <div class="feedback-buttons">
+          <button class="btn-feedback" id="btnSafe" onclick="selectRating('safe')">
+            <span class="fb-icon fb-safe">✓</span>
+            Yes, Safe
+          </button>
+          <button class="btn-feedback" id="btnUnsafe" onclick="selectRating('unsafe')">
+            <span class="fb-icon fb-unsafe">✗</span>
+            No, Unsafe
+          </button>
         </div>
-        <div class="hero-container">
-            <div class="hero-badge">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
-                    <circle cx="12" cy="10" r="3" />
-                </svg>
-                AI-Powered Safety
-            </div>
-            <h1 class="hero-title">
-                SafeRoute
-                <span class="hero-title-accent">AI Powered Women Safety Navigation</span>
-            </h1>
-            <p class="hero-description">
-                Navigate with confidence. SafeRoute uses advanced AI to predict route safety by analyzing
-                <strong>crime rates</strong>, <strong>street light availability</strong>, and
-                <strong>population density</strong> — empowering you to make informed travel decisions.
-            </p>
-            <div class="hero-features">
-                <div class="hero-feature">
-                    <div class="hero-feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22"
-                            height="22">
-                            <path d="M9 12l2 2 4-4" />
-                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                        </svg>
-                    </div>
-                    <span>Crime Analysis</span>
-                </div>
-                <div class="hero-feature">
-                    <div class="hero-feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22"
-                            height="22">
-                            <circle cx="12" cy="12" r="4" />
-                            <path
-                                d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-                        </svg>
-                    </div>
-                    <span>Street Lights</span>
-                </div>
-                <div class="hero-feature">
-                    <div class="hero-feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22"
-                            height="22">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
-                    </div>
-                    <span>Population Data</span>
-                </div>
-            </div>
-            <a href="#route" class="hero-cta" id="ctaButton">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                    <polygon points="3 11 22 2 13 21 11 13 3 11" />
-                </svg>
-                Start Safe Journey
-            </a>
+
+        <div class="field" style="margin-bottom: 24px;">
+          <label>Optional Comments</label>
+          <textarea id="feedbackComment" class="feedback-comment" placeholder="Lighting conditions, road safety, foot traffic…"></textarea>
         </div>
-    </section>
 
-    <!-- ===== FIND ROUTE / DESTINATION SECTION ===== -->
-    <section class="section" id="route">
-        <div class="section-container">
-            <div class="section-header">
-                <div class="section-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
-                        <circle cx="12" cy="10" r="3" />
-                        <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z" />
-                    </svg>
-                </div>
-                <h2 class="section-title">Find Your Safe Route</h2>
-                <p class="section-subtitle">Enter your route details and let our AI analyze the safety of your path.</p>
-            </div>
+        <button class="btn btn-primary" id="submitFeedbackBtn" onclick="submitFeedback()" disabled>
+          <span>Submit Feedback</span>
+          <span class="btn-arrow">→</span>
+        </button>
 
-            <div class="card route-card">
-                <form id="safetyForm" class="route-form">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="source" class="form-label">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
-                                    height="16">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <circle cx="12" cy="12" r="3" />
-                                </svg>
-                                Source Location
-                            </label>
-                            <input type="text" id="source" class="form-input" placeholder="e.g. Central Park" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="destination" class="form-label">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
-                                    height="16">
-                                    <path
-                                        d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
-                                    <circle cx="12" cy="10" r="3" />
-                                </svg>
-                                Destination
-                            </label>
-                            <input type="text" id="destination" class="form-input" placeholder="e.g. Downtown Station"
-                                required>
-                        </div>
-                    </div>
-
-                    <div class="form-row form-row-3">
-                        <div class="form-group">
-                            <label for="crime_rate" class="form-label">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
-                                    height="16">
-                                    <path
-                                        d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                                    <line x1="12" y1="9" x2="12" y2="13" />
-                                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                                </svg>
-                                Crime Rate
-                            </label>
-                            <input type="number" id="crime_rate" class="form-input" placeholder="Enter crime rate"
-                                step="any" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="population_density" class="form-label">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
-                                    height="16">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                    <circle cx="9" cy="7" r="4" />
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                                </svg>
-                                Population Density
-                            </label>
-                            <input type="number" id="population_density" class="form-input" placeholder="Enter density"
-                                step="any" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
-                                    height="16">
-                                    <circle cx="12" cy="12" r="4" />
-                                    <path
-                                        d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-                                </svg>
-                                Street Lights
-                            </label>
-                            <div class="toggle-container">
-                                <span class="toggle-label-text" id="toggleLabelText">No</span>
-                                <label class="toggle" for="street_light">
-                                    <input type="checkbox" id="street_light">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-check" id="checkSafetyBtn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
-                            height="20">
-                            <path d="M9 12l2 2 4-4" />
-                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                        </svg>
-                        Check Safety
-                    </button>
-                </form>
-
-                <!-- Result Display -->
-                <div class="result-container" id="resultContainer">
-                    <div class="result-card" id="resultCard">
-                        <div class="result-icon" id="resultIcon"></div>
-                        <h3 class="result-title" id="resultTitle"></h3>
-                        <p class="result-description" id="resultDescription"></p>
-                    </div>
-                </div>
-            </div>
+        <div class="loader" id="feedbackLoader" style="padding: 20px 0;">
+          <div class="loader-rings">
+            <div class="loader-ring r1"></div>
+          </div>
         </div>
-    </section>
 
-    <!-- ===== EMERGENCY CONTACT SECTION ===== -->
-    <section class="section section-alt" id="emergency">
-        <div class="section-container">
-            <div class="section-header">
-                <div class="section-icon section-icon-emergency">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
-                        <path
-                            d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-                    </svg>
-                </div>
-                <h2 class="section-title">Emergency Contact</h2>
-                <p class="section-subtitle">Save a trusted contact for quick access during emergencies. Your data stays
-                    private and secure.</p>
-            </div>
+        <button class="btn btn-ghost" style="margin-top: 16px;" onclick="goToStep(1)">
+          ← Back to Start
+        </button>
+      </div>
 
-            <div class="card emergency-card">
-                <div class="emergency-secure-badge">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                    Your information is encrypted and private
-                </div>
+    </div><!-- /card -->
 
-                <form id="emergencyForm" class="emergency-form">
-                    <div class="form-group">
-                        <label for="contactName" class="form-label">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
-                                height="16">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                            </svg>
-                            Contact Name
-                        </label>
-                        <input type="text" id="contactName" class="form-input" placeholder="Enter contact name"
-                            required>
-                    </div>
-                    <div class="form-group">
-                        <label for="contactPhone" class="form-label">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
-                                height="16">
-                                <path
-                                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-                            </svg>
-                            Phone Number
-                        </label>
-                        <input type="tel" id="contactPhone" class="form-input" placeholder="Enter phone number"
-                            required>
-                    </div>
-                    <button type="submit" class="btn btn-emergency" id="saveContactBtn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
-                            height="20">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                            <polyline points="17 21 17 13 7 13 7 21" />
-                            <polyline points="7 3 7 8 15 8" />
-                        </svg>
-                        Save Emergency Contact
-                    </button>
-                </form>
-
-                <!-- Saved Contacts List -->
-                <div class="contacts-list" id="contactsList"></div>
-
-                <!-- Confirmation Message -->
-                <div class="confirmation" id="confirmation">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
-                        <path d="M9 12l2 2 4-4" />
-                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                    </svg>
-                    <span>Contact saved successfully!</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== FOOTER ===== -->
-    <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-logo">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
-                    <circle cx="12" cy="10" r="3" />
-                </svg>
-                SafeRoute
-            </div>
-            <p class="footer-text">Empowering women with AI-driven safe navigation. &copy; 2026 SafeRoute.</p>
-        </div>
+    <footer>
+      <div class="footer-inner">
+        <span class="footer-logo">SafeRoute</span>
+        <span>ML-based urban safety analysis · Thiruvananthapuram, Kerala</span>
+      </div>
     </footer>
 
-    <script src="script.js"></script>
-</body>
+  </div>
 
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+</body>
 </html>

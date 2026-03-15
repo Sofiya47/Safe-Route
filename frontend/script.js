@@ -1,230 +1,258 @@
-/* ===========================
-   SafeRoute — Main Script
-   =========================== */
+const API_BASE = "http://127.0.0.1:5000";
 
-document.addEventListener('DOMContentLoaded', () => {
+// Map State
+let mapInstance = null;
+let routeLine    = null;
+let startMarker  = null;
+let destMarker   = null;
 
-    // ===== NAVBAR =====
-    const navbar = document.getElementById('navbar');
-    const navToggle = document.getElementById('navToggle');
-    const navLinks = document.getElementById('navLinks');
-    const navLinkItems = document.querySelectorAll('.nav-link');
+// Feedback State
+let currentStart    = "";
+let currentDest     = "";
+let currentScoreStr = "";
+let currentRating   = null;
 
-    // Scroll effect
-    window.addEventListener('scroll', () => {
-        navbar.classList.toggle('scrolled', window.scrollY > 20);
+/* ─────────────────────────────────────
+   STEP NAVIGATION
+───────────────────────────────────── */
+function goToStep(stepNumber) {
+  document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+  document.getElementById(`step-${stepNumber}`).classList.add('active');
+
+  if (stepNumber === 2 && mapInstance) {
+    setTimeout(() => mapInstance.invalidateSize(), 150);
+  }
+
+  if (stepNumber === 1) {
+    resetUI();
+    currentRating = null;
+    document.querySelectorAll('.btn-feedback').forEach(btn => btn.classList.remove('selected'));
+    document.getElementById('feedbackComment').value = "";
+    document.getElementById('submitFeedbackBtn').disabled = true;
+    document.getElementById('start').value = "";
+    document.getElementById('destination').value = "";
+  }
+}
+
+/* ─────────────────────────────────────
+   ANALYZE ROUTE
+───────────────────────────────────── */
+async function analyzeRoute() {
+  const start       = document.getElementById("start").value.trim();
+  const destination = document.getElementById("destination").value.trim();
+  const btn         = document.getElementById("analyzeBtn");
+  const loader      = document.getElementById("loader");
+
+  if (!start || !destination) {
+    showError("Please enter both an origin and a destination.");
+    return;
+  }
+
+  resetUI();
+  btn.disabled = true;
+  goToStep(2);
+  loader.classList.add("active");
+
+  try {
+    const response = await fetch(`${API_BASE}/predict`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ start_location: start, destination })
     });
 
-    // Mobile toggle
-    navToggle.addEventListener('click', () => {
-        navToggle.classList.toggle('active');
-        navLinks.classList.toggle('show');
-    });
+    const data = await response.json();
 
-    // Close mobile menu on link click
-    navLinkItems.forEach(link => {
-        link.addEventListener('click', () => {
-            navToggle.classList.remove('active');
-            navLinks.classList.remove('show');
-        });
-    });
-
-    // Active nav link on scroll
-    const sections = document.querySelectorAll('section[id]');
-    window.addEventListener('scroll', () => {
-        const scrollY = window.scrollY + 120;
-        sections.forEach(section => {
-            const top = section.offsetTop;
-            const height = section.offsetHeight;
-            const id = section.getAttribute('id');
-            const link = document.querySelector(`.nav-link[href="#${id}"]`);
-            if (link) {
-                if (scrollY >= top && scrollY < top + height) {
-                    navLinkItems.forEach(l => l.classList.remove('active'));
-                    link.classList.add('active');
-                }
-            }
-        });
-    });
-
-    // ===== STREET LIGHT TOGGLE =====
-    const streetLightToggle = document.getElementById('street_light');
-    const toggleLabelText = document.getElementById('toggleLabelText');
-
-    streetLightToggle.addEventListener('change', () => {
-        toggleLabelText.textContent = streetLightToggle.checked ? 'Yes' : 'No';
-    });
-
-    // ===== SAFETY CHECK FORM =====
-    const safetyForm = document.getElementById('safetyForm');
-    const resultContainer = document.getElementById('resultContainer');
-    const resultCard = document.getElementById('resultCard');
-    const resultIcon = document.getElementById('resultIcon');
-    const resultTitle = document.getElementById('resultTitle');
-    const resultDescription = document.getElementById('resultDescription');
-    const checkBtn = document.getElementById('checkSafetyBtn');
-
-    safetyForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const crimeRate = document.getElementById('crime_rate').value;
-        const populationDensity = document.getElementById('population_density').value;
-        const streetLight = streetLightToggle.checked ? 1 : 0;
-
-        // Show loading
-        checkBtn.classList.add('loading');
-        checkBtn.querySelector('svg').style.display = 'none';
-        const originalText = 'Check Safety';
-        checkBtn.childNodes.forEach(node => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                node.textContent = ' Analyzing... ';
-            }
-        });
-
-        try {
-            // Use absolute URL to backend
-            const API_URL = 'http://127.0.0.1:5000/predict';
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    crime_rate: parseFloat(crimeRate),
-                    population_density: parseFloat(populationDensity),
-                    street_light: streetLight
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('Prediction result:', data);
-            displayResult(data.safety_label);
-        } catch (error) {
-            console.error('Fetch error:', error);
-            displayResult('error');
-        } finally {
-            // Reset button
-            checkBtn.classList.remove('loading');
-            checkBtn.querySelector('svg').style.display = '';
-            checkBtn.childNodes.forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    node.textContent = '\n                        ' + originalText + '\n                    ';
-                }
-            });
-        }
-    });
-
-    function displayResult(label) {
-        resultContainer.classList.add('show');
-        resultCard.className = 'result-card';
-
-        const normalizedLabel = label.toString().toLowerCase().trim();
-
-        if (normalizedLabel.includes('safe') && !normalizedLabel.includes('unsafe')) {
-            resultCard.classList.add('safe');
-            resultIcon.textContent = '✅';
-            resultTitle.textContent = 'Safe Route';
-            resultDescription.textContent = 'This route appears to be safe based on the provided data. Stay aware of your surroundings.';
-        } else if (normalizedLabel.includes('moderate')) {
-            resultCard.classList.add('moderate');
-            resultIcon.textContent = '⚠️';
-            resultTitle.textContent = 'Moderate Risk';
-            resultDescription.textContent = 'This route has moderate risk. Consider traveling with a companion or during daylight hours.';
-        } else if (normalizedLabel.includes('unsafe') || normalizedLabel.includes('danger')) {
-            resultCard.classList.add('unsafe');
-            resultIcon.textContent = '🚨';
-            resultTitle.textContent = 'Unsafe Route';
-            resultDescription.textContent = 'This route is potentially unsafe. We recommend choosing an alternative route.';
-        } else if (normalizedLabel === 'error') {
-            resultCard.classList.add('unsafe');
-            resultIcon.textContent = '❌';
-            resultTitle.textContent = 'Connection Error';
-            resultDescription.textContent = 'Could not reach the server. Please ensure the backend is running and try again.';
-        } else {
-            // Fallback: display the raw label
-            resultCard.classList.add('moderate');
-            resultIcon.textContent = 'ℹ️';
-            resultTitle.textContent = `Result: ${label}`;
-            resultDescription.textContent = 'Route analysis complete. Please review the result above.';
-        }
-
-        // Scroll to result
-        resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (data.error) {
+      goToStep(1);
+      showError(data.error);
+      return;
     }
 
-    // ===== EMERGENCY CONTACT FORM =====
-    const emergencyForm = document.getElementById('emergencyForm');
-    const contactsList = document.getElementById('contactsList');
-    const confirmation = document.getElementById('confirmation');
-    let savedContacts = JSON.parse(localStorage.getItem('safeRouteContacts') || '[]');
+    renderResult(data, start, destination);
 
-    // Render existing contacts
-    renderContacts();
+  } catch (err) {
+    console.error("Analyze Route Error:", err);
+    goToStep(1);
+    showError("Could not reach the server. Please check your connection.");
+  } finally {
+    btn.disabled = false;
+    loader.classList.remove("active");
+  }
+}
 
-    emergencyForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+/* ─────────────────────────────────────
+   RENDER RESULT
+───────────────────────────────────── */
+function renderResult(data, start, destination) {
+  const score = data.safest_route_score; // 1–3
 
-        const name = document.getElementById('contactName').value.trim();
-        const phone = document.getElementById('contactPhone').value.trim();
+  let label, cls, description;
 
-        if (!name || !phone) return;
+  if (score >= 2.5) {
+    label       = "Safe";
+    cls         = "safe";
+    description = "This corridor is well-lit and monitored, with low crime density and close police presence.";
+  } else if (score >= 1.5) {
+    label       = "Moderate";
+    cls         = "moderate";
+    description = "Exercise normal caution. Some segments have limited surveillance. Prefer daytime travel.";
+  } else {
+    label       = "Unsafe";
+    cls         = "unsafe";
+    description = "This route passes through elevated-risk areas. Consider an alternative or travel with company.";
+  }
 
-        const contact = { id: Date.now(), name, phone };
-        savedContacts.push(contact);
-        localStorage.setItem('safeRouteContacts', JSON.stringify(savedContacts));
+  // Route strip
+  document.getElementById("resFrom").textContent = start;
+  document.getElementById("resTo").textContent   = destination;
 
-        renderContacts();
-        emergencyForm.reset();
+  // Verdict
+  const box = document.getElementById("verdictBox");
+  box.className = `verdict ${cls}`;
+  document.getElementById("verdictTitle").textContent    = label;
+  document.getElementById("verdictScoreNum").textContent = score.toFixed(2);
+  document.getElementById("verdictMeta").innerHTML =
+    `<span>Routes analysed:</span> ${data.routes_checked}&nbsp;&nbsp;·&nbsp;&nbsp;` +
+    `<span>Raw score:</span> ${score.toFixed(2)} / 3.00<br>${description}`;
 
-        // Show confirmation
-        confirmation.classList.add('show');
-        setTimeout(() => confirmation.classList.remove('show'), 3000);
+  // Score bar
+  const fill = document.getElementById("scoreBarFill");
+  fill.className = `score-bar-fill ${cls}`;
+  const pct = ((score - 1) / 2) * 100;
+  setTimeout(() => { fill.style.width = `${Math.max(4, pct)}%`; }, 100);
+
+  // Save for feedback
+  currentStart    = start;
+  currentDest     = destination;
+  currentScoreStr = score.toFixed(2);
+
+  // Draw map
+  drawMap(data.safest_route);
+
+  // Show result
+  document.getElementById("result").classList.add("active");
+}
+
+/* ─────────────────────────────────────
+   DRAW LEAFLET MAP
+───────────────────────────────────── */
+function drawMap(routeCoords) {
+  if (!mapInstance) {
+    mapInstance = L.map('map', { zoomControl: true }).setView([8.5241, 76.9366], 13);
+
+    // Soft tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+      maxZoom: 18
+    }).addTo(mapInstance);
+  }
+
+  // Clear previous layers
+  if (routeLine)   mapInstance.removeLayer(routeLine);
+  if (startMarker) mapInstance.removeLayer(startMarker);
+  if (destMarker)  mapInstance.removeLayer(destMarker);
+
+  // Draw teal route
+  routeLine = L.polyline(routeCoords, {
+    color:  '#1ABC9C',
+    weight: 5,
+    opacity: 0.9,
+    lineCap: 'round',
+    lineJoin: 'round'
+  }).addTo(mapInstance);
+
+  // Custom icons
+  const makeIcon = (color) => L.divIcon({
+    className: '',
+    html: `<div style="
+      width:14px;height:14px;border-radius:50%;
+      background:${color};border:2.5px solid white;
+      box-shadow:0 2px 8px rgba(0,0,0,0.25);
+    "></div>`,
+    iconSize:   [14, 14],
+    iconAnchor: [7, 7]
+  });
+
+  startMarker = L.marker(routeCoords[0], { icon: makeIcon('#6C3483') })
+    .addTo(mapInstance)
+    .bindPopup(`<b style="font-family:DM Sans,sans-serif">Start</b><br>${currentStart}`);
+
+  destMarker = L.marker(routeCoords[routeCoords.length - 1], { icon: makeIcon('#1ABC9C') })
+    .addTo(mapInstance)
+    .bindPopup(`<b style="font-family:DM Sans,sans-serif">Destination</b><br>${currentDest}`);
+
+  mapInstance.fitBounds(routeLine.getBounds(), { padding: [28, 28] });
+  setTimeout(() => mapInstance.invalidateSize(), 60);
+}
+
+/* ─────────────────────────────────────
+   FEEDBACK
+───────────────────────────────────── */
+function selectRating(rating) {
+  currentRating = rating;
+  document.querySelectorAll('.btn-feedback').forEach(btn => btn.classList.remove('selected'));
+
+  if (rating === 'safe') {
+    document.getElementById('btnSafe').classList.add('selected');
+  } else {
+    document.getElementById('btnUnsafe').classList.add('selected');
+  }
+
+  document.getElementById('submitFeedbackBtn').disabled = false;
+}
+
+async function submitFeedback() {
+  if (!currentRating) return;
+
+  const btn     = document.getElementById("submitFeedbackBtn");
+  const loader  = document.getElementById("feedbackLoader");
+  const comment = document.getElementById("feedbackComment").value.trim();
+
+  btn.style.display = 'none';
+  loader.classList.add('active');
+
+  try {
+    await fetch(`${API_BASE}/feedback`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        start:           currentStart,
+        destination:     currentDest,
+        predicted_score: currentScoreStr,
+        user_rating:     currentRating,
+        comment:         comment
+      })
     });
 
-    function renderContacts() {
-        if (savedContacts.length === 0) {
-            contactsList.innerHTML = '';
-            return;
-        }
+    loader.classList.remove('active');
+    btn.style.display  = 'flex';
+    btn.querySelector('span').textContent = "Feedback Saved — Thank You!";
+    btn.disabled = true;
 
-        contactsList.innerHTML = savedContacts.map(contact => `
-            <div class="contact-item" data-id="${contact.id}">
-                <div class="contact-info">
-                    <div class="contact-avatar">${contact.name.charAt(0).toUpperCase()}</div>
-                    <div class="contact-details">
-                        <h4>${escapeHtml(contact.name)}</h4>
-                        <span>${escapeHtml(contact.phone)}</span>
-                    </div>
-                </div>
-                <button class="contact-delete" onclick="deleteContact(${contact.id})" aria-label="Delete contact">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                </button>
-            </div>
-        `).join('');
-    }
+  } catch (err) {
+    console.error(err);
+    loader.classList.remove('active');
+    btn.style.display  = 'flex';
+    btn.querySelector('span').textContent = "Error — Please Retry";
+  }
+}
 
-    // Global delete function
-    window.deleteContact = (id) => {
-        savedContacts = savedContacts.filter(c => c.id !== id);
-        localStorage.setItem('safeRouteContacts', JSON.stringify(savedContacts));
-        renderContacts();
-    };
+/* ─────────────────────────────────────
+   HELPERS
+───────────────────────────────────── */
+function showError(msg) {
+  const box = document.getElementById("errorBox");
+  box.textContent = "⚠  " + msg;
+  box.classList.add("active");
+}
 
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(str));
-        return div.innerHTML;
-    }
+function resetUI() {
+  document.getElementById("result").classList.remove("active");
+  document.getElementById("errorBox").classList.remove("active");
+  document.getElementById("scoreBarFill").style.width = "0%";
+}
 
-    // ===== SMOOTH SCROLL FOR CTA =====
-    document.getElementById('ctaButton').addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById('route').scrollIntoView({ behavior: 'smooth' });
-    });
-
+// Enter key shortcut
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter") analyzeRoute();
 });
