@@ -7,7 +7,6 @@ import joblib
 
 # Load dataset
 df = pd.read_csv("../dataset/crime_data.csv")
-
 # Convert categorical columns
 df['time_of_day'] = df['time_of_day'].map({'Day':0,'Night':1})
 df['crowd_density'] = df['crowd_density'].map({'Low':0,'Medium':1,'High':2})
