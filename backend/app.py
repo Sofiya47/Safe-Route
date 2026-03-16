@@ -139,8 +139,8 @@ def predict():
 
             # STEP 9 — Calculate safety score
             score_map = {
-                "Safe": 2.0,
-                "Moderate": 1.5,
+                "Safe": 3,
+                "Moderate": 2,
                 "Unsafe": 1
             }
 
